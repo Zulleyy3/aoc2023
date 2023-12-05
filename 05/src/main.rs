@@ -22,7 +22,6 @@ impl PartialOrd for Mapping {
 
 fn push_mappings(list: &mut Vec<Mapping>, lines: &mut Peekable<Lines>) {
     while let Some(line) = lines.next_if(|l| !l.is_empty()) {
-        println!("{}", line);
         let vals: Vec<u64> = line
             .split_ascii_whitespace()
             .map(|s| u64::from_str_radix(s, 10).unwrap())
@@ -51,7 +50,6 @@ fn resolve_mapping_range(val: &(u64, u64), mapper: &Vec<Mapping>) -> Vec<(u64, u
     let mut list: Vec<(u64, u64)> = Vec::new();
     for mp in mapper {
         if lower + len > mp.source_start && mp.source_start + mp.length > lower {
-            println!("{} {} map {} {}", lower, len, mp.source_start, mp.length);
             if lower < mp.source_start {
                 let used_up = mp.source_start - lower;
                 list.push((lower, used_up));
@@ -92,7 +90,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let mut seed_iter:  Box<dyn Iterator<Item = u64>> = Box::new(seeds.into_iter()); 
     let mut seed2_iter:  Box<dyn Iterator<Item = (u64,u64)>> = Box::new(seeds2.into_iter()); 
-    let mut mappings: Vec<Rc<Vec<Mapping>>> = Vec::new();
     while let Some(_) = lines.next() {
         lines.next(); 
    
@@ -100,7 +97,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         push_mappings(&mut list, &mut lines);
         let clone = Rc::new(list);
         let clone1 = Rc::clone(&clone);
-        mappings.push(Rc::clone(&clone));
         
         seed_iter = Box::new(seed_iter.map(move |s| resolve_mapping(s.clone(), &clone)));
         seed2_iter = Box::new(seed2_iter.flat_map(move |s| resolve_mapping_range(&s, &clone1)));
