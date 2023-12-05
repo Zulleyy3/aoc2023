@@ -1,31 +1,33 @@
 use std::cmp::Ordering;
+use std::rc::Rc;
 use std::{error, fs, iter::Peekable, str::Lines};
-#[derive(Eq, PartialEq)]
-struct mapping {
+#[derive(Eq, PartialEq, Clone, Copy)]
+struct Mapping {
     dest_start: u64,
     source_start: u64,
     length: u64,
 }
 
-impl Ord for mapping {
+
+impl Ord for Mapping {
     fn cmp(&self, other: &Self) -> Ordering {
         self.source_start.cmp(&other.source_start)
     }
 }
-impl PartialOrd for mapping {
+impl PartialOrd for Mapping {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-fn push_mappings(list: &mut Vec<mapping>, lines: &mut Peekable<Lines>) {
+fn push_mappings(list: &mut Vec<Mapping>, lines: &mut Peekable<Lines>) {
     while let Some(line) = lines.next_if(|l| !l.is_empty()) {
         println!("{}", line);
         let vals: Vec<u64> = line
             .split_ascii_whitespace()
             .map(|s| u64::from_str_radix(s, 10).unwrap())
             .collect();
-        list.push(mapping {
+        list.push(Mapping {
             dest_start: vals[0],
             source_start: vals[1],
             length: vals[2],
@@ -34,7 +36,7 @@ fn push_mappings(list: &mut Vec<mapping>, lines: &mut Peekable<Lines>) {
     list.sort();
 }
 
-fn resolve_mapping(val: u64, mapper: &Vec<mapping>) -> u64 {
+fn resolve_mapping(val: u64, mapper: &Vec<Mapping>) -> u64 {
     for mp in mapper {
         if val >= mp.source_start && val < (mp.source_start + mp.length) {
             return mp.dest_start + val - mp.source_start;
@@ -43,7 +45,7 @@ fn resolve_mapping(val: u64, mapper: &Vec<mapping>) -> u64 {
     return val;
 }
 
-fn resolve_mapping_range(val: &(u64, u64), mapper: &Vec<mapping>) -> Vec<(u64, u64)> {
+fn resolve_mapping_range(val: &(u64, u64), mapper: &Vec<Mapping>) -> Vec<(u64, u64)> {
     let mut lower = val.0;
     let mut len = val.1;
     let mut list: Vec<(u64, u64)> = Vec::new();
@@ -87,60 +89,26 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         .zip((seeds.iter().skip(1)).step_by(2))
         .map(|(i, len)| (i.clone(), len.clone()))
         .collect();
-    lines.next();
-    lines.next();
-    let mut seed_2_soil: Vec<mapping> = Vec::new();
-    push_mappings(&mut seed_2_soil, &mut lines);
-    lines.next();
-    lines.next();
-    let mut soil_2_fert: Vec<mapping> = Vec::new();
-    push_mappings(&mut soil_2_fert, &mut lines);
 
-    lines.next();
-    lines.next();
-    let mut fert_2_water: Vec<mapping> = Vec::new();
-    push_mappings(&mut fert_2_water, &mut lines);
+    let mut seed_iter:  Box<dyn Iterator<Item = u64>> = Box::new(seeds.into_iter()); 
+    let mut seed2_iter:  Box<dyn Iterator<Item = (u64,u64)>> = Box::new(seeds2.into_iter()); 
+    let mut mappings: Vec<Rc<Vec<Mapping>>> = Vec::new();
+    while let Some(_) = lines.next() {
+        lines.next(); 
+   
+        let mut list = Vec::new();
+        push_mappings(&mut list, &mut lines);
+        let clone = Rc::new(list);
+        let clone1 = Rc::clone(&clone);
+        mappings.push(Rc::clone(&clone));
+        
+        seed_iter = Box::new(seed_iter.map(move |s| resolve_mapping(s.clone(), &clone)));
+        seed2_iter = Box::new(seed2_iter.flat_map(move |s| resolve_mapping_range(&s, &clone1)));
+    }
+    let smallest_loc = seed_iter.min().unwrap();
+    let smallest_loc_2 = seed2_iter.map(|(s,_)| s).min().unwrap();
 
-    lines.next();
-    lines.next();
-    let mut water_2_light: Vec<mapping> = Vec::new();
-    push_mappings(&mut water_2_light, &mut lines);
 
-    lines.next();
-    lines.next();
-    let mut light_2_temp: Vec<mapping> = Vec::new();
-    push_mappings(&mut light_2_temp, &mut lines);
-
-    lines.next();
-    lines.next();
-    let mut temp_2_humid: Vec<mapping> = Vec::new();
-    push_mappings(&mut temp_2_humid, &mut lines);
-
-    lines.next();
-    lines.next();
-    let mut humid_2_loc: Vec<mapping> = Vec::new();
-    push_mappings(&mut humid_2_loc, &mut lines);
-    let smallest_loc = seeds
-        .iter()
-        .map(|s| resolve_mapping(s.clone(), &seed_2_soil))
-        .map(|s| resolve_mapping(s.clone(), &soil_2_fert))
-        .map(|s| resolve_mapping(s.clone(), &fert_2_water))
-        .map(|s| resolve_mapping(s.clone(), &water_2_light))
-        .map(|s| resolve_mapping(s.clone(), &light_2_temp))
-        .map(|s| resolve_mapping(s.clone(), &temp_2_humid))
-        .map(|s| resolve_mapping(s.clone(), &humid_2_loc))
-        .min()
-        .unwrap();
-    let smallest_loc_2 = seeds2
-        .iter()
-        .flat_map(|s| resolve_mapping_range(&s, &seed_2_soil))
-        .flat_map(|s| resolve_mapping_range(&s, &soil_2_fert))
-        .flat_map(|s| resolve_mapping_range(&s, &fert_2_water))
-        .flat_map(|s| resolve_mapping_range(&s, &water_2_light))
-        .flat_map(|s| resolve_mapping_range(&s, &light_2_temp))
-        .flat_map(|s| resolve_mapping_range(&s, &temp_2_humid))
-        .flat_map(|s| resolve_mapping_range(&s, &humid_2_loc))
-        .map(|(s,_)| s).min().unwrap();
     println!("Part 1 {}", smallest_loc);
     println!("Part 2 {}", smallest_loc_2);
 
