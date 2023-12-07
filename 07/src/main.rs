@@ -1,9 +1,9 @@
-use std::{cmp::Ordering, error, fs};
+use std::{error, fs};
 
-#[derive(Eq,Debug)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
 struct Card {
-    hand: [u32; 5],
     rating: HandType,
+    hand: [u32; 5],
     bid: u32,
 }
 
@@ -17,33 +17,6 @@ enum HandType {
     FourOfKind,
     FiveOfKind
 }
-
-impl Ord for Card {
-    fn cmp(&self, other:&Self) -> Ordering {
-        if self.rating == other.rating {
-            for i in 0..self.hand.len() {
-                if self.hand[i] != other.hand[i] {
-                    return self.hand[i].cmp(&other.hand[i]);
-                }
-            }
-            return Ordering::Equal;
-        }
-        return self.rating.cmp(&other.rating);
-    }
-}
-
-impl PartialOrd for Card {
-    fn partial_cmp(&self, other:&Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Card {
-    fn eq(&self, other: &Self) -> bool {
-        self.rating == other.rating && self.hand == other.hand
-    }
-}
-
 
 impl Card {
     fn new(input: &str, jokers: bool) -> Self {
