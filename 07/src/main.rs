@@ -1,4 +1,4 @@
-use std::{cmp::{self, Ordering}, error, fs};
+use std::{cmp::Ordering, error, fs};
 
 #[derive(Eq,Debug)]
 struct Card {
@@ -75,47 +75,29 @@ impl Card {
  
         let joker_count = if !jokers {0} else {counts[0]};
 
-        let mut highest: u32 = 1;
-        let mut second_highest: u32 = 1; 
+        let mut highest_count: u32 = 0;
+        let mut second_highest_count: u32 = 0; 
 
         //ignore jokers during when determining highest cards
         let to_iter = if jokers {&counts[1..]} else {&counts};
         for count in to_iter.iter() {
-            if *count > highest {
-                second_highest = highest;
-                highest = *count;
+            if *count > highest_count {
+                second_highest_count = highest_count;
+                highest_count = *count;
             }
-            else if *count > second_highest {
-                second_highest = *count;
+            else if *count > second_highest_count {
+                second_highest_count = *count;
             }
         }
 
-        card.rating = match highest {
+        card.rating = match highest_count + joker_count {
             5  => HandType::FiveOfKind,
             4 => HandType::FourOfKind,
-            3 => if second_highest == 2 {HandType::FullHouse} else {HandType::ThreeOfKind},
-            2 => if second_highest == 2 {HandType::TwoPair} else {HandType::OnePair},
+            3 => if second_highest_count == 2 {HandType::FullHouse} else {HandType::ThreeOfKind},
+            2 => if second_highest_count == 2 {HandType::TwoPair} else {HandType::OnePair},
             _ => HandType::HighCard
         };
 
-        if jokers {
-            card.rating = match (card.rating, joker_count) {
-                (HandType::FourOfKind, 1)  => HandType::FiveOfKind,
-                (HandType::ThreeOfKind, 2) => HandType::FiveOfKind,
-                (HandType::ThreeOfKind, 1) => HandType::FourOfKind,
-                (HandType::TwoPair, 1) => HandType::FullHouse,
-                (HandType::OnePair, 3) => HandType::FiveOfKind,
-                (HandType::OnePair, 2) => HandType::FourOfKind,
-                (HandType::OnePair, 1) => HandType::ThreeOfKind,
-                (_, 5) => HandType::FiveOfKind,
-                (_, 4) => HandType::FiveOfKind,
-                (_, 3) => HandType::FourOfKind,
-                (_, 2) => HandType::ThreeOfKind,
-                (_, 1) => HandType::OnePair,
-                (t, _) => t,
-            }
-        }
-        
         card
     }
 }
@@ -132,6 +114,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     
     let mut cards: Vec<Card> = input.lines().map(|l| Card::new(l, true)).collect();
     cards.sort();
+    // println!("{:?}", cards);
     let part2 = cards.iter().fold((1,0), |v, card| (v.0 +1, v.1 + v.0* card.bid)).1;
     println!("Part 2 {}", part2);
     Ok(())
